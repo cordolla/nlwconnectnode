@@ -1,7 +1,15 @@
-import { fastify } from "fastify";
-import { fastifyCors } from "@fastify/cors";
-import { validatorCompiler, serializerCompiler, ZodTypeProvider } from "fastify-type-provider-zod";
-import { z } from "zod";
+import { fastify } from 'fastify'
+import { fastifyCors } from '@fastify/cors'
+import {
+  validatorCompiler,
+  serializerCompiler,
+  type ZodTypeProvider,
+  jsonSchemaTransform,
+} from 'fastify-type-provider-zod'
+import { fastifySwagger } from '@fastify/swagger'
+import { fastifySwaggerUi } from '@fastify/swagger-ui'
+import { subscribeToEventRoute } from './routes/subscribe-to-event-route'
+import { env } from './env'
 
 const app = fastify().withTypeProvider<ZodTypeProvider>()
 
@@ -10,30 +18,22 @@ app.setValidatorCompiler(validatorCompiler)
 
 app.register(fastifyCors)
 
-app.post('/subscriptions', {
-  schema: {
-    body: z.object({
-      name: z.string(),
-      email: z.string().email()
-    }),
-    response: {
-      201: z.object({
-        name: z.string(),
-        email: z.string().email()
-      })
-    }
+app.register(fastifySwagger, {
+  openapi: {
+    info: {
+      title: 'NLW Connect',
+      version: '0.0.1',
+    },
   },
-
-}, async (request, reply) => {
-  const { name, email } = request.body;
-
-  // criação da inscrição no banco de dados
-
-  return reply.status(201).send({
-    name,
-    email
-  })
+  transform: jsonSchemaTransform,
 })
-app.listen({ port:3337 }).then(() => {
-  console.log("Server is running on port 3337");
+
+app.register(fastifySwaggerUi, {
+  routePrefix: '/docs',
+})
+
+app.register(subscribeToEventRoute)
+
+app.listen({ port: env.PORT }).then(() => {
+  console.log('Server is running on port 3337')
 })
